@@ -24,7 +24,11 @@ from vaillant_netatmo_api import (
     MeasurementType,
 )
 
-from .boiler_errors import HOMESTATUS_PATH, parse_boiler_errors
+from .boiler_errors import (
+    HOMESTATUS_PATH,
+    boiler_errors_from_status,
+    parse_module_status,
+)
 from .const import DOMAIN, SUPPORTED_ENERGY_MEASUREMENT_TYPES, SUPPORTED_DURATION_MEASUREMENT_TYPES
 
 UPDATE_INTERVAL = timedelta(minutes=5)
@@ -37,7 +41,7 @@ class VaillantData:
 
     def __init__(self, client: ThermostatClient, homes: list[Home], devices: list[Device],
                  measurements: dict[(str, str, MeasurementType), MeasurementItem],
-                 boiler_errors: dict[str, list[str]] | None = None) -> None:
+                 module_status: dict[str, dict[str, Any]] | None = None) -> None:
         """Initialize."""
 
         self.client = client
@@ -57,7 +61,10 @@ class VaillantData:
         }
         self.measurements = measurements
         # None means the homestatus endpoint could not be read
-        self.boiler_errors = boiler_errors
+        self.module_status = module_status
+        self.boiler_errors = (
+            None if module_status is None else boiler_errors_from_status(module_status)
+        )
 
 
 class VaillantCoordinator(DataUpdateCoordinator[VaillantData]):
@@ -95,9 +102,9 @@ class VaillantCoordinator(DataUpdateCoordinator[VaillantData]):
                 for measurement_type in SUPPORTED_ENERGY_MEASUREMENT_TYPES+SUPPORTED_DURATION_MEASUREMENT_TYPES
             }
 
-            boiler_errors = await self._async_get_boiler_errors(homes)
+            module_status = await self._async_get_module_status(homes)
 
-            return VaillantData(self._client, homes, devices, measurements, boiler_errors)
+            return VaillantData(self._client, homes, devices, measurements, module_status)
         except RequestUnauthorizedException as ex:
             raise ConfigEntryAuthFailed from ex
         except ApiException as ex:
@@ -105,13 +112,13 @@ class VaillantCoordinator(DataUpdateCoordinator[VaillantData]):
             raise UpdateFailed(f"Error communicating with API: {ex}") from ex
 
 
-    async def _async_get_boiler_errors(self, homes: list[Home]) -> dict[str, list[str]] | None:
-        """Read boiler errors from api/homestatus.
+    async def _async_get_module_status(self, homes: list[Home]) -> dict[str, dict[str, Any]] | None:
+        """Read the module status (boiler errors, dhw, ...) from api/homestatus.
 
         Failures are logged but never break the update of the other entities.
         """
 
-        errors: dict[str, list[str]] = {}
+        status: dict[str, dict[str, Any]] = {}
         try:
             for home in homes:
                 # The library has no wrapper for this endpoint yet, so the
@@ -121,7 +128,7 @@ class VaillantCoordinator(DataUpdateCoordinator[VaillantData]):
                     _LOGGER.warning("Unexpected homestatus response: %s", body)
                     return None
                 _LOGGER.debug("homestatus response for %s: %s", home.id, body)
-                errors.update(parse_boiler_errors(body))
+                status.update(parse_module_status(body))
         except RequestUnauthorizedException:
             raise
         except Exception as ex:
@@ -129,7 +136,7 @@ class VaillantCoordinator(DataUpdateCoordinator[VaillantData]):
             _LOGGER.warning("Could not read boiler errors from homestatus: %s", ex)
             return None
 
-        return errors
+        return status
 
 
 class VaillantDeviceEntity(CoordinatorEntity[VaillantData]):
@@ -200,6 +207,16 @@ class VaillantDeviceEntity(CoordinatorEntity[VaillantData]):
             "sw_version": self._device.firmware,
             "manufacturer": self._device.type,
         }
+
+
+class VaillantHomestatusEntity(VaillantDeviceEntity):
+    """Base class for device entities based on api/homestatus."""
+
+    @property
+    def available(self) -> bool:
+        """Return False if the homestatus endpoint could not be read."""
+
+        return super().available and self.coordinator.data.module_status is not None
 
 
 class VaillantModuleEntity(CoordinatorEntity[VaillantData]):
