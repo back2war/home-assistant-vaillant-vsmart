@@ -24,6 +24,7 @@ from vaillant_netatmo_api import (
     MeasurementType,
 )
 
+from .boiler_errors import HOMESTATUS_PATH, parse_boiler_errors
 from .const import DOMAIN, SUPPORTED_ENERGY_MEASUREMENT_TYPES, SUPPORTED_DURATION_MEASUREMENT_TYPES
 
 UPDATE_INTERVAL = timedelta(minutes=5)
@@ -35,7 +36,8 @@ class VaillantData:
     """Class holding data which coordinator provides to the entity."""
 
     def __init__(self, client: ThermostatClient, homes: list[Home], devices: list[Device],
-                 measurements: dict[(str, str, MeasurementType), MeasurementItem]) -> None:
+                 measurements: dict[(str, str, MeasurementType), MeasurementItem],
+                 boiler_errors: dict[str, list[str]] | None = None) -> None:
         """Initialize."""
 
         self.client = client
@@ -54,6 +56,8 @@ class VaillantData:
             for program in module.therm_program_list
         }
         self.measurements = measurements
+        # None means the homestatus endpoint could not be read
+        self.boiler_errors = boiler_errors
 
 
 class VaillantCoordinator(DataUpdateCoordinator[VaillantData]):
@@ -91,12 +95,41 @@ class VaillantCoordinator(DataUpdateCoordinator[VaillantData]):
                 for measurement_type in SUPPORTED_ENERGY_MEASUREMENT_TYPES+SUPPORTED_DURATION_MEASUREMENT_TYPES
             }
 
-            return VaillantData(self._client, homes, devices, measurements)
+            boiler_errors = await self._async_get_boiler_errors(homes)
+
+            return VaillantData(self._client, homes, devices, measurements, boiler_errors)
         except RequestUnauthorizedException as ex:
             raise ConfigEntryAuthFailed from ex
         except ApiException as ex:
             _LOGGER.exception(ex)
             raise UpdateFailed(f"Error communicating with API: {ex}") from ex
+
+
+    async def _async_get_boiler_errors(self, homes: list[Home]) -> dict[str, list[str]] | None:
+        """Read boiler errors from api/homestatus.
+
+        Failures are logged but never break the update of the other entities.
+        """
+
+        errors: dict[str, list[str]] = {}
+        try:
+            for home in homes:
+                # The library has no wrapper for this endpoint yet, so the
+                # authenticated low level request of the client is used.
+                body = await self._client._post(HOMESTATUS_PATH, json={"home_id": home.id})
+                if body.get("status") != "ok":
+                    _LOGGER.warning("Unexpected homestatus response: %s", body)
+                    return None
+                _LOGGER.debug("homestatus response for %s: %s", home.id, body)
+                errors.update(parse_boiler_errors(body))
+        except RequestUnauthorizedException:
+            raise
+        except Exception as ex:
+            # Never let the optional homestatus call break the whole integration
+            _LOGGER.warning("Could not read boiler errors from homestatus: %s", ex)
+            return None
+
+        return errors
 
 
 class VaillantDeviceEntity(CoordinatorEntity[VaillantData]):

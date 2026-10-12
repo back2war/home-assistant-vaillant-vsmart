@@ -65,6 +65,20 @@
                     }
                 }
             }
+        },
+        "binary_sensor": {
+            "boiler_error_water_pressure": {
+                "name": "Water pressure low"
+            },
+            "boiler_error_maintenance": {
+                "name": "Maintenance required"
+            },
+            "boiler_error_boiler_error_internal": {
+                "name": "Boiler error"
+            },
+            "boiler_problem": {
+                "name": "Boiler problem"
+            }
         }
     }
 }
