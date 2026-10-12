@@ -4,6 +4,7 @@ The official Vaillant vSMART app reads the list ``boiler_error`` from the
 modules returned by ``api/homestatus`` and shows dashboard warnings for it,
 e.g. ``water_pressure`` -> "Water pressure low, please refill".
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -42,7 +43,9 @@ def parse_boiler_errors(body: dict[str, Any]) -> dict[str, list[str]]:
     return result
 
 
-def errors_for_device(errors_by_module: dict[str, list[str]], device_id: str) -> list[str]:
+def errors_for_device(
+    errors_by_module: dict[str, list[str]], device_id: str
+) -> list[str]:
     """Return the boiler errors relevant for a device.
 
     The gateway module usually has the same id as the device of the old API.

@@ -1,4 +1,5 @@
 """The Vaillant vSMART binary sensor platform (boiler warnings)."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -36,7 +37,9 @@ async def async_setup_entry(
         new_devices += [
             VaillantBoilerErrorBinarySensor(coordinator, device.id, WATER_PRESSURE),
             VaillantBoilerErrorBinarySensor(coordinator, device.id, MAINTENANCE),
-            VaillantBoilerErrorBinarySensor(coordinator, device.id, BOILER_ERROR_INTERNAL),
+            VaillantBoilerErrorBinarySensor(
+                coordinator, device.id, BOILER_ERROR_INTERNAL
+            ),
             VaillantBoilerProblemBinarySensor(coordinator, device.id),
         ]
 
@@ -52,7 +55,9 @@ class _VaillantBoilerBinarySensorBase(VaillantDeviceEntity, BinarySensorEntity):
     def _errors(self) -> list[str]:
         """Return the boiler errors of this device."""
 
-        return errors_for_device(self.coordinator.data.boiler_errors or {}, self._device_id)
+        return errors_for_device(
+            self.coordinator.data.boiler_errors or {}, self._device_id
+        )
 
     @property
     def available(self) -> bool:
@@ -64,7 +69,9 @@ class _VaillantBoilerBinarySensorBase(VaillantDeviceEntity, BinarySensorEntity):
 class VaillantBoilerErrorBinarySensor(_VaillantBoilerBinarySensorBase):
     """Binary sensor which is on while a specific boiler error is reported."""
 
-    def __init__(self, coordinator: VaillantCoordinator, device_id: str, error_code: str) -> None:
+    def __init__(
+        self, coordinator: VaillantCoordinator, device_id: str, error_code: str
+    ) -> None:
         """Initialize."""
 
         super().__init__(coordinator, device_id)

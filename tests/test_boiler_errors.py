@@ -1,4 +1,5 @@
 """Tests for boiler error parsing and the binary sensor platform."""
+
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -23,7 +24,11 @@ HOMESTATUS = {
         "home": {
             "id": "home1",
             "modules": [
-                {"id": "70:ee:50:00:00:01", "type": "NAVaillant", "boiler_error": ["water_pressure"]},
+                {
+                    "id": "70:ee:50:00:00:01",
+                    "type": "NAVaillant",
+                    "boiler_error": ["water_pressure"],
+                },
                 {"id": "04:00:00:00:00:02", "type": "NAThermVaillant"},
             ],
         }
@@ -68,7 +73,9 @@ def test_binary_sensors_state():
     problem = _sensor(VaillantBoilerProblemBinarySensor, errors)
     assert problem.is_on
     assert problem.extra_state_attributes == {"boiler_errors": [WATER_PRESSURE]}
-    assert not _sensor(VaillantBoilerProblemBinarySensor, {"dev": ["boiler_responding"]}).is_on
+    assert not _sensor(
+        VaillantBoilerProblemBinarySensor, {"dev": ["boiler_responding"]}
+    ).is_on
 
 
 def test_binary_sensor_unavailable_without_homestatus():
@@ -99,6 +106,15 @@ async def test_coordinator_homestatus_api_error_is_not_fatal(hass):
     from vaillant_netatmo_api import ApiException
 
     client = MagicMock()
-    client._post = AsyncMock(side_effect=ApiException("boom", httpx.Request("POST", "https://app.netatmo.net/api/homestatus"), None))
+    client._post = AsyncMock(
+        side_effect=ApiException(
+            "boom",
+            httpx.Request("POST", "https://app.netatmo.net/api/homestatus"),
+            None,
+        )
+    )
     coordinator = VaillantCoordinator(hass, client)
-    assert await coordinator._async_get_boiler_errors([SimpleNamespace(id="home1")]) is None
+    assert (
+        await coordinator._async_get_boiler_errors([SimpleNamespace(id="home1")])
+        is None
+    )
