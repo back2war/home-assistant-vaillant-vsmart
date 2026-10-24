@@ -9,7 +9,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, UnitOfEnergy, UnitOfTime, UnitOfTemperature
+from homeassistant.const import PERCENTAGE, UnitOfEnergy, UnitOfPressure, UnitOfTime, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -24,6 +24,7 @@ STATUS_SENSORS: dict[str, tuple[SensorDeviceClass | None, str | None, EntityCate
     "dhw_temperature_min": (SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, EntityCategory.DIAGNOSTIC),
     "dhw_temperature_max": (SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, EntityCategory.DIAGNOSTIC),
     "dhw_control": (None, None, None),
+    "water_pressure": (SensorDeviceClass.PRESSURE, UnitOfPressure.BAR, None),
     "rf_strength": (None, None, EntityCategory.DIAGNOSTIC),
     "oem_serial": (None, None, EntityCategory.DIAGNOSTIC),
 }
@@ -239,7 +240,7 @@ class VaillantStatusSensor(VaillantHomestatusEntity, SensorEntity):
         self._attr_device_class = device_class
         self._attr_native_unit_of_measurement = unit
         self._attr_entity_category = category
-        if device_class == SensorDeviceClass.TEMPERATURE:
+        if device_class in (SensorDeviceClass.TEMPERATURE, SensorDeviceClass.PRESSURE):
             self._attr_state_class = SensorStateClass.MEASUREMENT
 
     @property

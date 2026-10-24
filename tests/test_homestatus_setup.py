@@ -25,6 +25,7 @@ HOMESTATUS = {
                     "boiler_status": True,
                     "dhw_setpoint_temperature": 50,
                     "oem_serial": "123",
+                    "water_pressure": 1.2,
                 }
             ],
         }
@@ -71,3 +72,4 @@ async def test_setup_with_homestatus(hass):
     assert states["binary_sensor.heizung_boiler_active"] == "on"
     assert states["sensor.heizung_hot_water_setpoint"] == "50"
     assert states["sensor.heizung_boiler_serial_number"] == "123"
+    assert states["sensor.heizung_water_pressure"] == "1.2"

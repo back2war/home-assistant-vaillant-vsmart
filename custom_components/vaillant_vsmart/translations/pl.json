@@ -123,6 +123,9 @@
             "status_dhw_control": {
                 "name": "Hot water control"
             },
+            "status_water_pressure": {
+                "name": "Water pressure"
+            },
             "status_rf_strength": {
                 "name": "RF strength"
             },

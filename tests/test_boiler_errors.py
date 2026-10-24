@@ -154,6 +154,7 @@ def test_status_entities():
             "boiler_status": True,
             "dhw_setpoint_temperature": 52.0,
             "dhw_control": "eco",
+            "water_pressure": 1.2,
         }
     }
     assert _sensor(
@@ -182,4 +183,10 @@ def test_status_entities():
         ).native_value
         == "eco"
     )
+    pressure = _sensor(
+        VaillantStatusSensor, {}, "water_pressure", module_status=status
+    )
+    assert pressure.native_value == 1.2
+    assert pressure.native_unit_of_measurement == "bar"
+    assert pressure.state_class == "measurement"
     assert not _sensor(VaillantStatusSensor, None, "dhw_control").available
